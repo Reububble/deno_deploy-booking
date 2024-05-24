@@ -1,9 +1,11 @@
 name: Deploy
 on:
   push:
-    branches: main
+    branches:
+      - main
   pull_request:
-    branches: main
+    branches:
+      - main
 
 jobs:
   deploy:
@@ -30,5 +32,5 @@ jobs:
         uses: denoland/deployctl@v1
         with:
           project: "reububble-deno-deploy-16"
-          entrypoint: "main.tsx"
+          entrypoint: "main.ts"
           root: "."
