@@ -7,5 +7,44 @@
   "settings": {
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "denoland.vscode-deno"
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "build",
+        "command": "deno task build",
+        "type": "shell",
+        "args": [],
+        "problemMatcher": [
+          "$tsc"
+        ],
+        "presentation": {
+          "reveal": "always"
+        },
+        "group": {
+          "isDefault": true,
+          "kind": "build"
+        }
+      }
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "preLaunchTask": "build",
+        "request": "launch",
+        "name": "host",
+        "type": "node",
+        "program": "${workspaceFolder}/main.ts",
+        "cwd": "${workspaceFolder}",
+        "env": {},
+        "runtimeExecutable": "deno",
+        "runtimeArgs": [
+          "run"
+        ]
+      }
+    ]
   }
 }

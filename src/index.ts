@@ -1,3 +1,3 @@
 import { a } from "./imported.ts";
 
-console.log(a);
+document.body.replaceChildren(`${a}`);

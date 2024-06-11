@@ -14,6 +14,9 @@ async function* filepaths(dir: string): AsyncGenerator<{ type: "file" | "dir"; p
 }
 
 const promises = new Array<Promise<void>>();
+const entryPoints = new Array<{ in: string; out: string }>();
+
+await Deno.remove("./src/imports.ts").catch(() => {});
 
 for await (const filepath of filepaths("./src")) {
   const dist = filepath.path.replace(/^\.\/src/, "./dist");
@@ -22,22 +25,36 @@ for await (const filepath of filepaths("./src")) {
     continue;
   }
   if (filepath.path.endsWith(".ts")) {
+    entryPoints.push({ in: filepath.path, out: dist.replace(/^.\/dist\//, "./").replace(/\.ts$/, "") });
     continue;
   }
   promises.push((async () => {
     using file = await Deno.open(filepath.path);
-    await Deno.writeFile(dist.replace(/\.ts$/, ".js"), file.readable);
+    await Deno.writeFile(dist, file.readable);
   })());
+}
+
+{
+  const imports = JSON.stringify(Object.fromEntries(entryPoints.map(({ out }) => [out.slice(1) + ".ts", out.slice(1) + ".js"])));
+  const template = await Deno.readTextFile("./imports.ts");
+  await Deno.writeTextFile("./src/imports.ts", `const imports = ${imports};\n${template}`);
+  entryPoints.push({ in: "./src/imports.ts", out: "./imports" });
 }
 
 const result = await esbuild.build({
   plugins: [...denoPlugins()],
-  entryPoints: [import.meta.resolve("./src/index.ts")],
+  entryPoints,
   outdir: "./dist",
-  bundle: true,
   format: "esm",
-  minify: true,
+  absWorkingDir: Deno.cwd(),
 });
 
-await Promise.all([...promises, ...(result.outputFiles ?? []).map((file) => Deno.writeFile("." + file.path, file.contents, { create: true }))]);
+await Deno.remove("./src/imports.ts");
+
+await Promise.all([
+  ...promises,
+  ...(result.outputFiles ?? []).map((file) => {
+    Deno.writeFile(file.path, file.contents, { create: true });
+  }),
+]);
 await esbuild.stop();
