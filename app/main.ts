@@ -44,9 +44,7 @@ async function loadFile(name: string) {
       throw new Error("Not a file");
     }
     const extension = name.slice(name.lastIndexOf("."));
-    const type = extension === ".ts"
-      ? "text/javascript"
-      : contentType(extension) ?? "application/octet-stream";
+    const type = extension === ".ts" ? "text/javascript" : contentType(extension) ?? "application/octet-stream";
     return { name, file, type };
   } catch {
     return;

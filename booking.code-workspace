@@ -41,6 +41,7 @@
         "program": "${workspaceFolder}/app/main.ts",
         "cwd": "${workspaceFolder}/web",
         "env": {},
+        "outputCapture": "std",
         "runtimeExecutable": "deno",
         "runtimeArgs": [
           "run",
