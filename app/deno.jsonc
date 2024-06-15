@@ -1,0 +1,8 @@
+{
+  "fmt": {
+    "lineWidth": 160
+  },
+  "imports": {
+    "@deno:std/": "https://deno.land/std@0.224.0/"
+  }
+}

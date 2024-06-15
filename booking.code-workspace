@@ -5,6 +5,7 @@
     }
   ],
   "settings": {
+    "deno.config": "web/deno.jsonc",
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "denoland.vscode-deno"
   },
@@ -13,7 +14,7 @@
     "tasks": [
       {
         "label": "build",
-        "command": "deno task build",
+        "command": "deno task -c build/deno.jsonc build",
         "type": "shell",
         "args": [],
         "problemMatcher": [
@@ -37,12 +38,13 @@
         "request": "launch",
         "name": "host",
         "type": "node",
-        "program": "${workspaceFolder}/main.ts",
-        "cwd": "${workspaceFolder}",
+        "program": "${workspaceFolder}/app/main.ts",
+        "cwd": "${workspaceFolder}/web",
         "env": {},
         "runtimeExecutable": "deno",
         "runtimeArgs": [
-          "run"
+          "run",
+          "--config=${workspaceFolder}/app/deno.jsonc"
         ]
       }
     ]

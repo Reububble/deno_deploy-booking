@@ -1,0 +1,9 @@
+{
+  "fmt": {
+    "lineWidth": 160
+  },
+  "importMap": "./build.importmap",
+  "tasks": {
+    "build": "cd ../web && deno run -c ../build/deno.jsonc --allow-env=DENO_REGISTRY_URL --allow-net=deno.land --allow-read=./ --allow-write=./dist ../build/build.ts"
+  }
+}

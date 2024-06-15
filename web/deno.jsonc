@@ -1,0 +1,12 @@
+{
+  "fmt": {
+    "lineWidth": 160
+  },
+  "importMap": "web.importmap",
+  "compilerOptions": {
+    "lib": [
+      "esnext",
+      "dom"
+    ]
+  }
+}
