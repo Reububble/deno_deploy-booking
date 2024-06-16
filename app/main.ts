@@ -4,7 +4,7 @@ Deno.serve({ port: 8000 }, async (request) => {
   try {
     const url = new URL(request.url);
 
-    const path = "./dist" + url.pathname;
+    const path = "./web/dist" + url.pathname;
     const file = await retrieveFile(path, request.headers.get("content-type"));
 
     if (file === undefined) {

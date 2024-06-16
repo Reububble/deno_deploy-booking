@@ -33,4 +33,4 @@ jobs:
         with:
           project: "reububble-deno-deploy-16"
           entrypoint: "../app/main.ts"
-          root: "web"
+          root: "."

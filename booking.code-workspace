@@ -39,7 +39,7 @@
         "name": "host",
         "type": "node",
         "program": "${workspaceFolder}/app/main.ts",
-        "cwd": "${workspaceFolder}/web",
+        "cwd": "${workspaceFolder}",
         "env": {},
         "outputCapture": "std",
         "runtimeExecutable": "deno",
