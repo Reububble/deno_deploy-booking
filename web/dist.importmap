@@ -1,5 +1,7 @@
 {
   "imports": {
-    "booking/": "./"
+    "booking/": "./src/",
+    "jsx/": "./jsx/",
+    "jsx/jsx-dev-runtime": "./jsx/jsx-dev-runtime.ts"
   }
 }

@@ -2,11 +2,16 @@
   "fmt": {
     "lineWidth": 160
   },
+  "exclude": ["../app/**/*.ts", "../build/**/*.ts", "./dist/**/*.ts"],
   "importMap": "web.importmap",
   "compilerOptions": {
     "lib": [
       "esnext",
       "dom"
-    ]
+    ],
+    "jsx": "react-jsx",
+    "jsxImportSource": "jsx",
+    "jsxFactory": "jsx",
+    "jsxImportSourceTypes": "jsx"
   }
 }

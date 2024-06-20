@@ -1,6 +1,6 @@
 import * as esbuild from "esbuild/wasm.js";
 import { denoPlugins } from "esbuild-deno-loader";
-import { DOMParser, nodesFromString } from "deno-dom/deno-dom-wasm.ts";
+import { DOMParser } from "deno-dom/deno-dom-wasm.ts";
 
 async function* filepaths(dir: string): AsyncGenerator<{ type: "file" | "dir"; path: string }> {
   yield { type: "dir", path: dir };
@@ -23,14 +23,43 @@ const [importMap] = await Promise.all([
 ]);
 
 for await (const filepath of filepaths("./src")) {
-  const dist = filepath.path.replace(/^\.\/src/, "./dist");
+  const dist = filepath.path.replace(/^\.\/src/, "./dist/src");
+  await processPath(filepath, dist);
+}
+
+for await (const filepath of filepaths("./jsx")) {
+  const dist = filepath.path.replace(/^\.\/jsx/, "./dist/jsx");
+  await processPath(filepath, dist);
+}
+
+const result = await esbuild.build({
+  plugins: [...denoPlugins()],
+  entryPoints,
+  outbase: "./",
+  outdir: "./dist",
+  format: "esm",
+  jsxDev: true,
+  jsx: "automatic",
+  jsxFactory: "jsx",
+  jsxImportSource: "jsx",
+  absWorkingDir: Deno.cwd(),
+  outExtension: { ".js": ".ts" },
+});
+
+await Promise.all([
+  ...promises,
+  ...(result.outputFiles ?? []).map((file) => Deno.writeFile(file.path, file.contents, { create: true })),
+]);
+await esbuild.stop();
+
+async function processPath(filepath: { type: "file" | "dir"; path: string }, dist: string) {
   if (filepath.type === "dir") {
     await Deno.mkdir(dist, { recursive: true });
-    continue;
+    return;
   }
-  if (filepath.path.endsWith(".ts")) {
+  if (filepath.path.endsWith(".ts") || filepath.path.endsWith(".tsx")) {
     entryPoints.push(filepath.path);
-    continue;
+    return;
   }
   promises.push((async () => {
     // If it's a html file, preprocess it to add the importmap
@@ -47,19 +76,3 @@ for await (const filepath of filepaths("./src")) {
     }
   })());
 }
-
-const result = await esbuild.build({
-  plugins: [...denoPlugins()],
-  entryPoints,
-  outbase: "./src",
-  outdir: "./dist",
-  format: "esm",
-  absWorkingDir: Deno.cwd(),
-  outExtension: { ".js": ".ts" },
-});
-
-await Promise.all([
-  ...promises,
-  ...(result.outputFiles ?? []).map((file) => Deno.writeFile(file.path, file.contents, { create: true })),
-]);
-await esbuild.stop();

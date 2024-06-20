@@ -4,7 +4,7 @@ Deno.serve({ port: 8000 }, async (request) => {
   try {
     const url = new URL(request.url);
 
-    const path = "./web/dist" + url.pathname;
+    const path = url.pathname;
     const file = await retrieveFile(path, request.headers.get("content-type"));
 
     if (file === undefined) {
@@ -25,7 +25,15 @@ Deno.serve({ port: 8000 }, async (request) => {
 });
 
 async function retrieveFile(path: string, contentType: string | null) {
-  let ret = await loadFile(path);
+  let ret = await loadFile("src/" + path);
+  if (contentType !== null) {
+    for (const extension of extensionsByType(contentType) ?? []) {
+      ret ??= await loadFile(`${path}.${extension}`);
+    }
+  }
+  ret ??= await loadFile(`src/${path}.html`);
+  ret ??= await loadFile(`src/${path}/index.html`);
+  ret ??= await loadFile(path);
   if (contentType !== null) {
     for (const extension of extensionsByType(contentType) ?? []) {
       ret ??= await loadFile(`${path}.${extension}`);
@@ -36,7 +44,8 @@ async function retrieveFile(path: string, contentType: string | null) {
   return ret;
 }
 
-async function loadFile(name: string) {
+async function loadFile(path: string) {
+  const name = "./web/dist/" + path;
   try {
     const file = await Deno.open(name);
     const stat = await file.stat();
