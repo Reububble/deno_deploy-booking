@@ -1,0 +1,35 @@
+html {
+  height: 100%;
+  container: html / inline-size;
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(400px, auto) minmax(auto, 400px);
+  grid-template-rows: auto 1fr;
+  grid-template-areas: "top top" "left right";
+}
+
+@container html (width < 700px) {
+  * {
+    background-color: black;
+  }
+}
+
+#sidebar {
+  grid-area: right;
+  background: #F00A;
+  width: 400px;
+}
+
+#calendar {
+  grid-area: left;
+  background: #00FA;
+}
+
+#menu {
+  grid-area: top;
+  background: #0F0A;
+}

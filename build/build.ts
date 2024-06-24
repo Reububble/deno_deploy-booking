@@ -35,6 +35,7 @@ for await (const filepath of filepaths("./jsx")) {
 const result = await esbuild.build({
   plugins: [...denoPlugins()],
   entryPoints,
+  target: "esnext",
   outbase: "./",
   outdir: "./dist",
   format: "esm",
