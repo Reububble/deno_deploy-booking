@@ -34,6 +34,13 @@
     ]
   },
   "launch": {
+    "inputs": [
+      {
+        "id": "password",
+        "type": "promptString",
+        "description": "mock password"
+      }
+    ],
     "version": "0.2.0",
     "configurations": [
       {
@@ -43,12 +50,29 @@
         "type": "node",
         "program": "${workspaceFolder}/app/main.ts",
         "cwd": "${workspaceFolder}",
+        "env": {
+          "password": "${input:password}"
+        },
+        "outputCapture": "std",
+        "runtimeExecutable": "deno",
+        "runtimeArgs": [
+          "run",
+          "--unstable-kv",
+          "--config=${workspaceFolder}/app/deno.jsonc"
+        ]
+      },
+      {
+        "request": "launch",
+        "name": "build",
+        "type": "node",
+        "program": "${workspaceFolder}/build/build.ts",
+        "cwd": "${workspaceFolder}",
         "env": {},
         "outputCapture": "std",
         "runtimeExecutable": "deno",
         "runtimeArgs": [
           "run",
-          "--config=${workspaceFolder}/app/deno.jsonc"
+          "--config=${workspaceFolder}/build/deno.jsonc"
         ]
       }
     ]

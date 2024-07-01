@@ -1,6 +1,7 @@
 {
   "imports": {
     "booking/": "./src/",
+    "shared/": "./shared/",
     "jsx/": "./jsx/",
     "jsx/jsx-dev-runtime": "./jsx/jsx-dev-runtime.ts"
   }

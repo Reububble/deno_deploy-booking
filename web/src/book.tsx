@@ -1,10 +1,38 @@
+async function getBookings() {
+  try {
+    const ret = await fetch("/api/bookings");
+    if (ret.status !== 200) {
+      throw new Error("not ok");
+    }
+    return ret;
+  } catch {
+    await fetch("/api/user", {
+      method: "POST",
+      body: JSON.stringify({
+        name: prompt("name"),
+        password: prompt("password"),
+      }),
+      credentials: "same-origin",
+    });
+    return await fetch("/api/bookings");
+  }
+}
+
+const bookings = await (await getBookings()).json() as {
+  name: string;
+  start: number;
+  end: number;
+}[];
+
 document.body.replaceChildren(
   <div id="menu">
     Booking
   </div>,
   <div id="calendar">
     <div id="days">
-      <div id="days_left"></div>
+      <div id="days_left">
+        <button>Week</button>
+      </div>
       <div id="days_mon">
         <div>Monday</div>
       </div>
@@ -26,23 +54,65 @@ document.body.replaceChildren(
       <div id="days_sun">
         <div>Sunday</div>
       </div>
-      <div id="days_right"></div>
     </div>
     <div id="display">
       <div id="display_left">{...new Array(24).fill(undefined).map((_, i) => <div>{i === 0 ? `${i + 12} AM` : i < 13 ? `${i} AM` : `${i - 12} PM`}</div>)}</div>
       <div id="display_mon"></div>
-      <div id="display_tue">
-        <div style={{ background: "purple", gridRow: "121 / span 24" }}>
-          booking
-        </div>
-      </div>
+      <div id="display_tue"></div>
       <div id="display_wed"></div>
       <div id="display_thu"></div>
       <div id="display_fri"></div>
       <div id="display_sat"></div>
       <div id="display_sun"></div>
-      <div id="display_right"></div>
     </div>
   </div>,
-  <div id="sidebar"></div>,
+  <div id="sidebar">
+    <form>
+      <label>
+        Start:
+        <div className="datetime">
+          <input type="date"></input>
+          <input type="time"></input>
+        </div>
+      </label>
+      <label>
+        End:
+        <div className="datetime">
+          <input type="date"></input>
+          <input type="time"></input>
+        </div>
+      </label>
+    </form>
+  </div>,
 );
+
+const now = new Date();
+const mondayStart = now.getTime() -
+  (1000 * (60 * (60 * (24 * ((now.getDay() + 6) % 7) + now.getHours()) + now.getMinutes()) + now.getSeconds()) + now.getMilliseconds());
+
+for (const booking of bookings) {
+  // I have to display this booking
+  for (let day = 0; day < 7; ++day) {
+    if (booking.end < mondayStart + day * 24 * 60 * 60 * 1000) {
+      continue;
+    }
+    if (booking.start > mondayStart + (day + 1) * 24 * 60 * 60 * 1000) {
+      continue;
+    }
+
+    const start = Math.max(0, (booking.start - mondayStart + day * 24 * 60 * 60 * 1000) / (24 * 60 * 60 * 1000));
+    const end = Math.min(1, (booking.end - mondayStart + day * 24 * 60 * 60 * 1000) / (24 * 60 * 60 * 1000));
+
+    const booked = document.createElement("div");
+    booked.style.background = "purple";
+    booked.style.position = "relative";
+    booked.style.top = `${start * 100}%`;
+    booked.style.height = `${(end - start) * 100}%`;
+    booked.textContent = `${booking.name}\n${new Date(booking.start).toLocaleTimeString()} - ${new Date(booking.end).toLocaleTimeString()}`;
+
+    const column = document.body.querySelector(
+      ["#display_mon", "#display_tue", "#display_wed", "#display_thu", "#display_fri", "#display_sat", "#display_sun"][day],
+    )!;
+    column.appendChild(booked);
+  }
+}

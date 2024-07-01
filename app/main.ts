@@ -1,33 +1,156 @@
-import { contentType, extensionsByType } from "@deno:std/media_types/mod.ts";
+import { allExtensions, contentType } from "@std/media-types";
+import { getCookies, setCookie } from "@std/http/cookie";
+import { isConformingArray, isConformingObject, isType } from "shared/typeNarrow.ts";
+import { encodeBase64 } from "@std/encoding";
 
-Deno.serve({ port: 8000 }, async (request) => {
-  try {
-    const url = new URL(request.url);
-
-    const path = url.pathname;
-    const file = await retrieveFile(path, request.headers.get("content-type"));
-
-    if (file === undefined) {
-      console.log(path, "404");
-      return new Response(undefined, { status: 404 });
-    }
-    console.log(path, file.name, file.type);
-
-    return new Response(file.file.readable, {
-      headers: {
-        "content-type": file.type,
-      },
-    });
-  } catch (e) {
-    console.error("Error", e);
-    throw e;
-  }
+const isUserObject = isConformingObject({
+  created: isType("number"),
+  sessions: isConformingArray(isType("string")),
 });
+
+const isNewUser = isConformingObject({
+  name: isType("string"),
+  password: isType("string"),
+});
+
+const password = Deno.env.get("password");
+
+if (import.meta.main) {
+  // Init
+  const kv = await Deno.openKv();
+
+  const passwordChecks = new Array<PromiseWithResolvers<void>>();
+
+  (function checkPassword() {
+    passwordChecks.shift()?.resolve();
+    setTimeout(checkPassword, 1000);
+  })();
+
+  const serving = Deno.serve({ port: 8000 }, async (request) => {
+    // Who's asking?
+    const user = await getUser(request, kv);
+
+    try {
+      const url = new URL(request.url);
+
+      switch (url.pathname) {
+        case "/api/bookings": {
+          if (user === undefined) {
+            return new Response(undefined, { status: 401 });
+          }
+          return new Response(JSON.stringify(
+            (await kv.get<({
+              name: string;
+              start: number;
+              end: number;
+            })[]>(["bookings"])).value,
+          ));
+        }
+        case "/api/user": {
+          if (request.method !== "POST") {
+            return new Response(undefined, { status: 404 });
+          }
+          if (request.body === null) {
+            return new Response(undefined, { status: 400 });
+          }
+          const json = await request.json() as unknown;
+          if (!isNewUser(json)) {
+            return new Response(undefined, { status: 400 });
+          }
+          if (passwordChecks.length > 10) {
+            return new Response(undefined, { status: 401 });
+          }
+          const check = Promise.withResolvers<void>();
+          passwordChecks.push(check);
+          await check.promise;
+          if (password !== json.password) {
+            return new Response(undefined, { status: 401 });
+          }
+          const sessionData = crypto.getRandomValues(new Uint8Array(128));
+          const sessionCookie = encodeBase64(sessionData);
+          for (const session in kv.list({ prefix: ["session"] })) {
+            if (session === sessionCookie) {
+              throw new Error("Wow");
+            }
+          }
+          const atomic = kv.atomic();
+          const user = (await kv.get(["user", json.name])).value ?? {
+            created: Date.now(),
+            sessions: [],
+          };
+          if (isUserObject(user)) {
+            user.sessions.push(sessionCookie);
+            kv.set(["user", json.name], user);
+          }
+
+          atomic.set(["session", sessionCookie], json.name);
+          if (!(await atomic.commit()).ok) {
+            throw new Error("Failed to commit");
+          }
+          const headers = new Headers();
+          setCookie(headers, {
+            httpOnly: true,
+            maxAge: 60 * 60 * 24 * 365,
+            path: "/api", // ?
+            sameSite: "Strict",
+            secure: true,
+            name: "__Host-session",
+            value: sessionCookie,
+          });
+          return new Response(undefined, { status: 200, headers });
+        }
+      }
+
+      const path = url.pathname;
+      const file = await retrieveFile(path, request.headers.get("content-type"));
+
+      if (file === undefined) {
+        console.log(path, "404");
+        return new Response(undefined, { status: 404 });
+      }
+      console.log(path, file.name, file.type);
+
+      return new Response(file.file.readable, {
+        headers: {
+          "content-type": file.type,
+        },
+      });
+    } catch (e) {
+      console.error("Error", e);
+      throw e;
+    }
+  });
+
+  console.log("initialised");
+
+  await serving.finished;
+}
+
+async function getUser(request: Request, kv: Deno.Kv) {
+  const cookies = getCookies(request.headers);
+  const sessionCookie = cookies["__Host-session"];
+  if (sessionCookie === undefined) {
+    return undefined; // No user
+  }
+  // Find the user
+  const name = await kv.get(["session", sessionCookie]);
+  if (typeof name.value !== "string") {
+    throw new Error("Unexpected session user name");
+  }
+  const user = await kv.get(["user", name.value]);
+  if (!isUserObject(user.value)) {
+    throw new Error("Unexpected user object");
+  }
+  if (user.value.sessions.includes(sessionCookie)) {
+    return name.value;
+  }
+  return undefined;
+}
 
 async function retrieveFile(path: string, contentType: string | null) {
   let ret = await loadFile("src/" + path);
   if (contentType !== null) {
-    for (const extension of extensionsByType(contentType) ?? []) {
+    for (const extension of allExtensions(contentType) ?? []) {
       ret ??= await loadFile(`${path}.${extension}`);
     }
   }
@@ -35,7 +158,7 @@ async function retrieveFile(path: string, contentType: string | null) {
   ret ??= await loadFile(`src/${path}/index.html`);
   ret ??= await loadFile(path);
   if (contentType !== null) {
-    for (const extension of extensionsByType(contentType) ?? []) {
+    for (const extension of allExtensions(contentType) ?? []) {
       ret ??= await loadFile(`${path}.${extension}`);
     }
   }

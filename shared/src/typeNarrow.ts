@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
-import { IntersectingTypes, UnionTypes } from "booking/type.ts";
+import { IntersectingTypes, UnionTypes } from "shared/type.ts";
 
 type TypeMap = {
   "string": string;
@@ -24,7 +24,7 @@ export type PredicateInputs<P extends Predicate<any, any>[]> = P extends [infer 
   ? [PredicateInput<Head>, ...PredicateInputs<Tail>]
   : [];
 
-export function isValue<V>(value: V) {
+export function isValue<const V>(value: V) {
   return (u: unknown): u is V => u === value;
 }
 

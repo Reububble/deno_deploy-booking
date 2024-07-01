@@ -7,7 +7,7 @@ body {
   margin: 0;
   height: 100%;
   display: grid;
-  grid-template-columns: minmax(600px, auto) minmax(auto, 300px);
+  grid-template-columns: auto minmax(auto, 300px);
   grid-template-rows: auto 1fr;
   grid-template-areas: "top top" "left right";
 }
@@ -21,16 +21,27 @@ body {
 #sidebar {
   grid-area: right;
   background: #F00A;
-  min-width: 200px;
+  min-width: min-content;
+}
+
+#sidebar form label {
+  display: block;
+  float: left;
+  width: 100%
+}
+
+#sidebar form .datetime {
+  float: right;
 }
 
 #calendar {
   grid-area: left;
   background: #00FA;
   display: grid;
-  grid-template-columns: auto repeat(7, 1fr) auto;
+  grid-template-columns: auto repeat(7, 1fr);
   grid-template-rows: max-content 1fr;
-  overflow-y: auto;
+  overflow-y: hidden;
+  min-width: 600px;
 }
 
 #days {
@@ -42,11 +53,10 @@ body {
 }
 
 #display {
-  --firsts: 12;
   grid-area: 2 / 1 / -1 / -1;
   display: grid;
   grid-template-columns: subgrid;
-  grid-template-rows: repeat(calc(24 * var(--firsts)), minmax(calc(2em / var(--firsts)), auto));
+  overflow-y: auto;
 }
 
 #days_left {
@@ -55,11 +65,10 @@ body {
 
 #display>* {
   grid-row: 1 / -1;
-  display: grid;
-  grid-template-rows: subgrid;
+  position: relative;
 }
 
-#days>*:not(:first-child, :last-child) {
+#days>* {
   overflow-x: hidden;
   text-align: center;
   padding-block: 1em;
@@ -78,11 +87,9 @@ body {
   background-image: repeating-linear-gradient(#0000, #0000 calc(100% / 24), #FFF1 calc(100% / 24), #FFF1 calc(100% / 12))
 }
 
-#days_right {
-  min-width: 3em;
-}
-
 #display_left {
+  display: grid;
+  grid-template-rows: repeat(24, minmax(2em, auto));
   min-width: 3em;
   text-align: right;
 }
@@ -91,10 +98,6 @@ body {
   grid-row: span var(--firsts);
   padding-inline: 0.25em;
   padding-block: 0.1em;
-}
-
-#display_right {
-  min-width: 3em;
 }
 
 #menu {

@@ -27,18 +27,31 @@ export function jsxDEV(tag: unknown, props: unknown, children: unknown[] | undef
   for (const propKey in props) {
     const prop = (props as { [k: string]: any })[propKey];
     switch (propKey) {
-      case "style": {
+      case "style":
         for (const key in prop) {
           element.style[key as Exclude<keyof CSSStyleDeclaration, "length" | "parentRule">] = prop[key];
         }
         break;
-      }
-      case "children": {
+      case "className":
+        element.className = String(prop);
+        break;
+      case "children":
         children = prop;
         break;
-      }
       default:
-        element.setAttribute(propKey, String(prop));
+        switch (typeof prop) {
+          case "string":
+            element.setAttribute(propKey, prop);
+            break;
+          case "boolean":
+            element.toggleAttribute(propKey, prop);
+            break;
+          case "undefined":
+            element.toggleAttribute(propKey, false);
+            break;
+          default:
+            element.setAttribute(propKey, String(prop));
+        }
     }
   }
 

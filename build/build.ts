@@ -15,20 +15,25 @@ async function* filepaths(dir: string): AsyncGenerator<{ type: "file" | "dir"; p
 }
 
 const promises = new Array<Promise<void>>();
-const entryPoints = new Array<string>();
+const entryPoints = new Array<{ in: string; out: string }>();
 
 const [importMap] = await Promise.all([
-  Deno.readTextFile("./dist.importmap"),
-  Deno.remove("./dist", { recursive: true }).catch(() => {}),
+  Deno.readTextFile("web/dist.importmap"),
+  Deno.remove("web/dist", { recursive: true }).catch(() => {}),
 ]);
 
-for await (const filepath of filepaths("./src")) {
-  const dist = filepath.path.replace(/^\.\/src/, "./dist/src");
+for await (const filepath of filepaths("web/src")) {
+  const dist = filepath.path.replace(/^web\/src/, "web/dist/src");
   await processPath(filepath, dist);
 }
 
-for await (const filepath of filepaths("./jsx")) {
-  const dist = filepath.path.replace(/^\.\/jsx/, "./dist/jsx");
+for await (const filepath of filepaths("web/jsx")) {
+  const dist = filepath.path.replace(/^web\/jsx/, "web/dist/jsx");
+  await processPath(filepath, dist);
+}
+
+for await (const filepath of filepaths("shared/src")) {
+  const dist = filepath.path.replace(/^shared\/src/, "web/dist/shared");
   await processPath(filepath, dist);
 }
 
@@ -36,8 +41,7 @@ const result = await esbuild.build({
   plugins: [...denoPlugins()],
   entryPoints,
   target: "esnext",
-  outbase: "./",
-  outdir: "./dist",
+  outdir: ".",
   format: "esm",
   jsxDev: true,
   jsx: "automatic",
@@ -59,7 +63,7 @@ async function processPath(filepath: { type: "file" | "dir"; path: string }, dis
     return;
   }
   if (filepath.path.endsWith(".ts") || filepath.path.endsWith(".tsx")) {
-    entryPoints.push(filepath.path);
+    entryPoints.push({ in: filepath.path, out: dist.replace(/\.tsx?$/, "") });
     return;
   }
   promises.push((async () => {
