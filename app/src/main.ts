@@ -2,6 +2,8 @@ import { allExtensions, contentType } from "@std/media-types";
 import { getCookies, setCookie } from "@std/http/cookie";
 import { isConformingArray, isConformingObject, isType } from "shared/typeNarrow.ts";
 import { encodeBase64 } from "@std/encoding";
+import { checkPassword } from "app/passwordChecks.ts";
+import { mondayStart, sundayEnd } from "shared/times.ts";
 
 const isUserObject = isConformingObject({
   created: isType("number"),
@@ -13,18 +15,9 @@ const isNewUser = isConformingObject({
   password: isType("string"),
 });
 
-const password = Deno.env.get("password");
-
 if (import.meta.main) {
   // Init
   const kv = await Deno.openKv();
-
-  const passwordChecks = new Array<PromiseWithResolvers<void>>();
-
-  (function checkPassword() {
-    passwordChecks.shift()?.resolve();
-    setTimeout(checkPassword, 1000);
-  })();
 
   const serving = Deno.serve({ port: 8000 }, async (request) => {
     // Who's asking?
@@ -38,12 +31,17 @@ if (import.meta.main) {
           if (user === undefined) {
             return new Response(undefined, { status: 401 });
           }
+          const start = Number(url.searchParams.get("start") ?? mondayStart());
+          const end = Number(url.searchParams.get("end") ?? sundayEnd());
+
+          const firstStart = (await kv.list<number>({ start: ["bookings", "end", start], end: ["bookings", "end", end] }).next()).value?.value ?? start;
+          const starts = kv.list<{
+            name: string;
+            end: number;
+          }>({ start: ["bookings", "start", firstStart], end: ["bookings", "start", end] });
+
           return new Response(JSON.stringify(
-            (await kv.get<({
-              name: string;
-              start: number;
-              end: number;
-            })[]>(["bookings"])).value,
+            (await Array.fromAsync(starts)).map((entry) => ({ ...entry.value, start: entry.key[2] })),
           ));
         }
         case "/api/user": {
@@ -57,13 +55,7 @@ if (import.meta.main) {
           if (!isNewUser(json)) {
             return new Response(undefined, { status: 400 });
           }
-          if (passwordChecks.length > 10) {
-            return new Response(undefined, { status: 401 });
-          }
-          const check = Promise.withResolvers<void>();
-          passwordChecks.push(check);
-          await check.promise;
-          if (password !== json.password) {
+          if (!await checkPassword(json.password)) {
             return new Response(undefined, { status: 401 });
           }
           const sessionData = crypto.getRandomValues(new Uint8Array(128));

@@ -1,3 +1,5 @@
+import { mondayStart } from "shared/times.ts";
+
 async function getBookings() {
   try {
     const ret = await fetch("/api/bookings");
@@ -87,27 +89,28 @@ document.body.replaceChildren(
 );
 
 const now = new Date();
-const mondayStart = now.getTime() -
-  (1000 * (60 * (60 * (24 * ((now.getDay() + 6) % 7) + now.getHours()) + now.getMinutes()) + now.getSeconds()) + now.getMilliseconds());
+const monStart = mondayStart(now).getTime();
 
 for (const booking of bookings) {
   // I have to display this booking
   for (let day = 0; day < 7; ++day) {
-    if (booking.end < mondayStart + day * 24 * 60 * 60 * 1000) {
+    const dayStart = monStart + day * 24 * 60 * 60 * 1000;
+    const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+    if (booking.end < dayStart) {
       continue;
     }
-    if (booking.start > mondayStart + (day + 1) * 24 * 60 * 60 * 1000) {
+    if (booking.start > dayEnd) {
       continue;
     }
 
-    const start = Math.max(0, (booking.start - mondayStart + day * 24 * 60 * 60 * 1000) / (24 * 60 * 60 * 1000));
-    const end = Math.min(1, (booking.end - mondayStart + day * 24 * 60 * 60 * 1000) / (24 * 60 * 60 * 1000));
+    const top = Math.max(0, (booking.start - dayStart) / (24 * 60 * 60 * 1000));
+    const bottom = Math.min(1, (booking.end - dayStart) / (24 * 60 * 60 * 1000));
 
     const booked = document.createElement("div");
     booked.style.background = "purple";
     booked.style.position = "relative";
-    booked.style.top = `${start * 100}%`;
-    booked.style.height = `${(end - start) * 100}%`;
+    booked.style.top = `${top * 100}%`;
+    booked.style.height = `${(bottom - top) * 100}%`;
     booked.textContent = `${booking.name}\n${new Date(booking.start).toLocaleTimeString()} - ${new Date(booking.end).toLocaleTimeString()}`;
 
     const column = document.body.querySelector(

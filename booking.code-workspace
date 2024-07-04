@@ -48,7 +48,7 @@
         "request": "launch",
         "name": "host",
         "type": "node",
-        "program": "${workspaceFolder}/app/main.ts",
+        "program": "${workspaceFolder}/app/src/main.ts",
         "cwd": "${workspaceFolder}",
         "env": {
           "password": "${input:password}"
