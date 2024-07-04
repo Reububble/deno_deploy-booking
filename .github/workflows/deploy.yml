@@ -32,5 +32,5 @@ jobs:
         uses: denoland/deployctl@v1
         with:
           project: "reububble-deno-deploy-16"
-          entrypoint: "app/main.ts"
+          entrypoint: "app/src/main.ts"
           root: "."
