@@ -1,15 +1,15 @@
-import * as esbuild from "esbuild/wasm.js";
+import * as esbuild from "esbuild/mod.js";
 import { denoPlugins } from "esbuild-deno-loader";
 import { DOMParser } from "deno-dom/deno-dom-wasm.ts";
 
-async function* filepaths(dir: string): AsyncGenerator<{ type: "file" | "dir"; path: string }> {
+async function* filepaths(dir: string, base: URL): AsyncGenerator<{ type: "file" | "dir"; path: string }> {
   yield { type: "dir", path: dir };
-  for await (const entry of Deno.readDir(dir)) {
+  for await (const entry of Deno.readDir(new URL(dir, base))) {
     const path = `${dir}/${entry.name}`;
     if (entry.isFile) {
       yield { type: "file", path };
     } else {
-      yield* filepaths(path);
+      yield* filepaths(path, base);
     }
   }
 }
@@ -17,66 +17,102 @@ async function* filepaths(dir: string): AsyncGenerator<{ type: "file" | "dir"; p
 const promises = new Array<Promise<void>>();
 const entryPoints = new Array<{ in: string; out: string }>();
 
-const [importMap] = await Promise.all([
-  Deno.readTextFile("web/dist.importmap"),
-  Deno.remove("web/dist", { recursive: true }).catch(() => {}),
+const [webImportMapString, distImportMapString] = await Promise.all([
+  Deno.readTextFile("./web/web.importmap"),
+  Deno.readTextFile("./web/dist.importmap"),
+  Deno.remove("./dist", { recursive: true }).catch(() => {}),
 ]);
 
-for await (const filepath of filepaths("web/src")) {
-  const dist = filepath.path.replace(/^web\/src/, "web/dist/src");
-  await processPath(filepath, dist);
+const distImportMap = JSON.parse(distImportMapString) as unknown;
+const webImportMap = JSON.parse(webImportMapString) as unknown;
+const isImportMap = (u: unknown) => u is { "imports": Record<string, string> } {
+  if (typeof u !== "object" || u === null)
+    return false;
+  if (!("imports" in u))
+    return false;
+  if (typeof u.imports !== "object" || u.imports === null)
+    return false;
+  for (const value of u.imports)
+    if (typeof value !== "string")
+      return false;
+  return true;
+};
+if (!isImportMap(distImportMap) || !isImportMap(webImportMap)) {
+  throw new Error("invalid import map");
 }
 
-for await (const filepath of filepaths("web/jsx")) {
-  const dist = filepath.path.replace(/^web\/jsx/, "web/dist/jsx");
-  await processPath(filepath, dist);
+const webImportSpecifiers = new Set(Object.keys(webImportMap.imports));
+const distImportSpecifiers = new Set(Object.keys(distImportMap.imports));
+if (webImportSpecifiers.size !== distImportSpecifiers.size || !webImportSpecifiers.isSubsetOf(distImportSpecifiers)) {
+  throw new Error("inconsistent import maps");
 }
 
-for await (const filepath of filepaths("shared/src")) {
-  const dist = filepath.path.replace(/^shared\/src/, "web/dist/shared");
-  await processPath(filepath, dist);
+const cwd = "file://" + Deno.cwd() + "/";
+for (const specifier of webImportSpecifiers) {
+  const webURL = new URL(webImportMap.imports[specifier], cwd);
+  const distURL = `dist/${distImportMap.imports[specifier]}`;
+  if (!specifier.endsWith("/")) {
+    await processPath({ type: "file", path: webURL }, distURL);
+    continue;
+  }
+  for await (const filepath of filepaths(".", webURL)) {
+    const dist = `${distURL}${filepath.path}`;
+    await processPath({ type: filepath.type, path: new URL(filepath.path, webURL) }, dist);
+  }
 }
 
-const result = await esbuild.build({
-  plugins: [...denoPlugins()],
+await esbuild.build({
+  plugins: [...denoPlugins({
+    "configPath": new URL("kiosk-web.jsonc", cwd).pathname.slice(1),
+  })],
   entryPoints,
   target: "esnext",
+  supported: { "using": false },
   outdir: ".",
   format: "esm",
   jsxDev: true,
   jsx: "automatic",
   jsxFactory: "jsx",
   jsxImportSource: "jsx",
-  absWorkingDir: Deno.cwd(),
-  outExtension: { ".js": ".ts" },
+  outExtension: {
+    ".js": ".ts",
+  },
+  tsconfigRaw: {
+    compilerOptions: {
+      experimentalDecorators: true,
+    },
+  },
+  sourcemap: "linked",
+  sourcesContent: true,
 });
 
-await Promise.all([
-  ...promises,
-  ...(result.outputFiles ?? []).map((file) => Deno.writeFile(file.path, file.contents, { create: true })),
-]);
+await Promise.all(promises);
 await esbuild.stop();
 
-async function processPath(filepath: { type: "file" | "dir"; path: string }, dist: string) {
-  if (filepath.type === "dir") {
+async function processPath(src: { type: "file" | "dir"; path: URL }, dist: string) {
+  if (src.type === "dir") {
     await Deno.mkdir(dist, { recursive: true });
     return;
   }
-  if (filepath.path.endsWith(".ts") || filepath.path.endsWith(".tsx")) {
-    entryPoints.push({ in: filepath.path, out: dist.replace(/\.tsx?$/, "") });
+  if (src.path.pathname.endsWith(".ts")) {
+    entryPoints.push({ in: src.path.pathname, out: dist.slice(0, -3) });
+    return;
+  }
+  if (src.path.pathname.endsWith(".tsx")) {
+    entryPoints.push({ in: src.path.pathname, out: dist.slice(0, -4) });
     return;
   }
   promises.push((async () => {
     // If it's a html file, preprocess it to add the importmap
-    if (filepath.path.endsWith(".html")) {
-      const doc = new DOMParser().parseFromString(await Deno.readTextFile(filepath.path), "text/html");
+    if (src.path.pathname.endsWith(".html")) {
+      const doc = new DOMParser().parseFromString(await Deno.readTextFile(src.path), "text/html");
       const importMapScript = doc.createElement("script");
       importMapScript.setAttribute("type", "importmap");
-      importMapScript.textContent = importMap;
+      importMapScript.textContent = distImportMapString;
       doc.head.prepend(importMapScript);
       await Deno.writeTextFile(dist, `<!DOCTYPE html>\n<html>\n${doc.head.outerHTML}\n${doc.body.outerHTML}\n</html>`);
     } else {
-      using file = await Deno.open(filepath.path);
+      using file = await Deno.open(src.path);
       await Deno.writeFile(dist, file.readable);
     }
   })());
