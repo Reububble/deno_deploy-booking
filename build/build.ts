@@ -25,16 +25,21 @@ const [webImportMapString, distImportMapString] = await Promise.all([
 
 const distImportMap = JSON.parse(distImportMapString) as unknown;
 const webImportMap = JSON.parse(webImportMapString) as unknown;
-const isImportMap = (u: unknown) => u is { "imports": Record<string, string> } {
-  if (typeof u !== "object" || u === null)
+const isImportMap = (u: unknown): u is { "imports": Record<string, string> } => {
+  if (typeof u !== "object" || u === null) {
     return false;
-  if (!("imports" in u))
+  }
+  if (!("imports" in u)) {
     return false;
-  if (typeof u.imports !== "object" || u.imports === null)
+  }
+  if (typeof u.imports !== "object" || u.imports === null) {
     return false;
-  for (const value of u.imports)
-    if (typeof value !== "string")
+  }
+  for (const key in u.imports) {
+    if (typeof u.imports[key as keyof typeof u.imports] !== "string") {
       return false;
+    }
+  }
   return true;
 };
 if (!isImportMap(distImportMap) || !isImportMap(webImportMap)) {
