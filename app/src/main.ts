@@ -19,7 +19,7 @@ if (import.meta.main) {
   // Init
   const kv = await Deno.openKv();
 
-  const serving = Deno.serve({ port: 8000 }, async (request) => {
+  const serving = Deno.serve({ port: 8000 }, async (request, info) => {
     // Who's asking?
     const user = await getUser(request, kv);
 
@@ -83,7 +83,6 @@ if (import.meta.main) {
           setCookie(headers, {
             httpOnly: true,
             maxAge: 60 * 60 * 24 * 365,
-            path: "/api", // ?
             sameSite: "Strict",
             secure: true,
             name: "__Host-session",
@@ -101,6 +100,12 @@ if (import.meta.main) {
         return new Response(undefined, { status: 404 });
       }
       console.log(path, file.name, file.type);
+
+      info.completed.then(() => {
+        try {
+          file.file.close();
+        } catch { /** Do nothing */ }
+      });
 
       return new Response(file.file.readable, {
         headers: {

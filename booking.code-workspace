@@ -7,10 +7,7 @@
   "settings": {
     "deno.config": "web/deno.jsonc",
     "editor.formatOnSave": true,
-    "editor.defaultFormatter": "denoland.vscode-deno",
-    "[css]": {
-      "editor.defaultFormatter": "vscode.css-language-features"
-    }
+    "editor.defaultFormatter": "denoland.vscode-deno"
   },
   "tasks": {
     "version": "2.0.0",
