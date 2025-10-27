@@ -12,8 +12,8 @@ const isNewUser = isConformingObject({
 if (import.meta.main) {
   // Init
   await Deno.mkdir("db");
-  const userManager = await UserManager.create("db/users");
-  const bookingManager = await Deno.openKv("db/bookings");
+  const kv = await Deno.openKv();
+  const userManager = new UserManager(kv);
 
   const serving = Deno.serve({ port: 8000 }, async (request, info) => {
     // Who's asking?
@@ -30,8 +30,8 @@ if (import.meta.main) {
           const start = Number(url.searchParams.get("start") ?? mondayStart());
           const end = Number(url.searchParams.get("end") ?? sundayEnd());
 
-          const firstStart = (await bookingManager.list<number>({ start: ["end", start], end: ["end", end] }).next()).value?.value ?? start;
-          const starts = bookingManager.list<{
+          const firstStart = (await kv.list<number>({ start: ["end", start], end: ["end", end] }).next()).value?.value ?? start;
+          const starts = kv.list<{
             name: string;
             end: number;
           }>({ start: ["start", firstStart], end: ["start", end] });

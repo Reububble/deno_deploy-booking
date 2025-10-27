@@ -8,11 +8,8 @@ const isUserObject = isConformingObject({
 });
 
 export class UserManager {
-  static async create(key: string) {
-    return new UserManager(await Deno.openKv(key));
-  }
   readonly kv: Deno.Kv;
-  private constructor(kv: Deno.Kv) {
+  constructor(kv: Deno.Kv) {
     this.kv = kv;
   }
   async newUser(name: string) {
