@@ -30,11 +30,11 @@ if (import.meta.main) {
           const start = Number(url.searchParams.get("start") ?? mondayStart());
           const end = Number(url.searchParams.get("end") ?? sundayEnd());
 
-          const firstStart = (await kv.list<number>({ start: ["end", start], end: ["end", end] }).next()).value?.value ?? start;
+          const firstStart = (await kv.list<number>({ start: ["bookings", "end", start], end: ["bookings", "end", end] }).next()).value?.value ?? start;
           const starts = kv.list<{
             name: string;
             end: number;
-          }>({ start: ["start", firstStart], end: ["start", end] });
+          }>({ start: ["bookings", "start", firstStart], end: ["bookings", "start", end] });
 
           return new Response(JSON.stringify(
             (await Array.fromAsync(starts)).map((entry) => ({ ...entry.value, start: entry.key[2] })),
