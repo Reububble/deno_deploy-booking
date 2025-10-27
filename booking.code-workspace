@@ -14,7 +14,10 @@
     "tasks": [
       {
         "label": "build",
-        "command": "deno task -c build/deno.jsonc build",
+        "command": "deno task bundle",
+        "options": {
+          "cwd": "web"
+        },
         "type": "shell",
         "args": [],
         "problemMatcher": [
@@ -54,23 +57,15 @@
         "runtimeExecutable": "deno",
         "runtimeArgs": [
           "run",
+          "--inspect-brk=127.0.0.1:9229",
+          "-W=./kv",
+          "-R=./kv,./public",
+          "-E=password",
+          "-N=0.0.0.0:8000",
           "--unstable-kv",
           "--config=${workspaceFolder}/app/deno.jsonc"
-        ]
-      },
-      {
-        "request": "launch",
-        "name": "build",
-        "type": "node",
-        "program": "${workspaceFolder}/build/build.ts",
-        "cwd": "${workspaceFolder}",
-        "env": {},
-        "outputCapture": "std",
-        "runtimeExecutable": "deno",
-        "runtimeArgs": [
-          "run",
-          "--config=${workspaceFolder}/build/deno.jsonc"
-        ]
+        ],
+        "attachSimplePort": 9229
       }
     ]
   }

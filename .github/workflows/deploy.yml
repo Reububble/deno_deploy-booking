@@ -23,10 +23,10 @@ jobs:
       - name: Install Deno
         uses: denoland/setup-deno@v1
         with:
-          deno-version: v1.x
+          deno-version: v2.5.x
 
       - name: Build step
-        run: "deno task -c build/deno.jsonc build"
+        run: "cd web && deno task bundle"
 
       - name: Upload to Deno Deploy
         uses: denoland/deployctl@v1

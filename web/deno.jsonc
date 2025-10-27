@@ -2,7 +2,13 @@
   "fmt": {
     "lineWidth": 160
   },
-  "exclude": ["../app/**/*.ts", "../build/**/*.ts", "./dist/**/*.ts"],
+  "imports": {
+    "booking/": "./src/",
+    "shared/": "../shared/src/",
+    "jsx/": "./jsx/",
+    "jsx/jsx-dev-runtime": "./jsx/jsx-dev-runtime.ts",
+    "jsx/jsx-runtime": "./jsx/jsx-dev-runtime.ts"
+  },
   "importMap": "web.importmap",
   "compilerOptions": {
     "lib": [
@@ -13,5 +19,17 @@
     "jsxImportSource": "jsx",
     "jsxFactory": "jsx",
     "jsxImportSourceTypes": "jsx"
+  },
+  "lint": {
+    "rules": {
+      "exclude": [
+        "jsx-button-has-type"
+      ]
+    }
+  },
+  "tasks": {
+    "bundle": {
+      "command": "rm -rf ../public; deno bundle ./src/*.html --outdir=../public"
+    }
   }
 }

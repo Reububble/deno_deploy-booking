@@ -1,4 +1,5 @@
 import { Element } from "./types.ts";
+import { isConformingObject, isType } from "shared/typeNarrow.ts";
 
 function createElement(tag: unknown) {
   if (typeof tag === "string") {
@@ -39,6 +40,14 @@ export function jsxDEV(tag: unknown, props: unknown, children: unknown[] | undef
         children = prop;
         break;
       default:
+        if (
+          propKey.startsWith("on") && typeof prop === "function" || isConformingObject({
+            handleEvent: isType("function"),
+          })(prop)
+        ) {
+          element.addEventListener(propKey.slice(2), prop);
+          break;
+        }
         switch (typeof prop) {
           case "string":
             element.setAttribute(propKey, prop);
@@ -68,5 +77,8 @@ export function jsxDEV(tag: unknown, props: unknown, children: unknown[] | undef
 
   return element;
 }
+
+export const jsx = jsxDEV;
+export const jsxs = jsxDEV;
 
 export * as JSX from "./types.ts";
