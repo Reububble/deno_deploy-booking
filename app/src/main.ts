@@ -11,7 +11,6 @@ const isNewUser = isConformingObject({
 
 if (import.meta.main) {
   // Init
-  await Deno.mkdir("db");
   const kv = await Deno.openKv();
   const userManager = new UserManager(kv);
 
