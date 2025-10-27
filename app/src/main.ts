@@ -11,9 +11,9 @@ const isNewUser = isConformingObject({
 
 if (import.meta.main) {
   // Init
-  await Deno.mkdir("kv");
-  const userManager = await UserManager.create("kv/users");
-  const bookingManager = await Deno.openKv("kv/bookings");
+  await Deno.mkdir("db");
+  const userManager = await UserManager.create("db/users");
+  const bookingManager = await Deno.openKv("db/bookings");
 
   const serving = Deno.serve({ port: 8000 }, async (request, info) => {
     // Who's asking?

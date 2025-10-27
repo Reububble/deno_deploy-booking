@@ -1,4 +1,4 @@
 dist
 deno.lock
-kv/**/*
+db/**/*
 public/**/*
