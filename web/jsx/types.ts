@@ -7,6 +7,9 @@ export type IntrinsicElements = {
       className?: string;
       children?: Child | Child[];
     }
+    & {
+      [K in keyof HTMLElementEventMap as `on${K}`]?: (event: HTMLElementEventMap[K]) => void;
+    }
     & SpecialAttributes<K>;
 };
 
@@ -40,6 +43,9 @@ type SpecialAttributes<K> = K extends "a" ? { href?: string }
         | "time"
         | "url"
         | "week";
+    }
+  : K extends "button" ? {
+      type?: "button" | "submit" | "reset";
     }
   : unknown;
 

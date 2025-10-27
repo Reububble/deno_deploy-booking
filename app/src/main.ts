@@ -1,14 +1,8 @@
 import { allExtensions, contentType } from "@std/media-types";
-import { getCookies, setCookie } from "@std/http/cookie";
-import { isConformingArray, isConformingObject, isType } from "shared/typeNarrow.ts";
-import { encodeBase64 } from "@std/encoding";
+import { isConformingObject, isType } from "shared/typeNarrow.ts";
 import { checkPassword } from "app/passwordChecks.ts";
 import { mondayStart, sundayEnd } from "shared/times.ts";
-
-const isUserObject = isConformingObject({
-  created: isType("number"),
-  sessions: isConformingArray(isType("string")),
-});
+import { UserManager } from "./user.ts";
 
 const isNewUser = isConformingObject({
   name: isType("string"),
@@ -18,10 +12,11 @@ const isNewUser = isConformingObject({
 if (import.meta.main) {
   // Init
   const kv = await Deno.openKv();
+  const userManager = new UserManager(kv);
 
-  const serving = Deno.serve({ port: 8000 }, async (request) => {
+  const serving = Deno.serve({ port: 8000 }, async (request, info) => {
     // Who's asking?
-    const user = await getUser(request, kv);
+    const user = await userManager.getUser(request);
 
     try {
       const url = new URL(request.url);
@@ -58,38 +53,7 @@ if (import.meta.main) {
           if (!await checkPassword(json.password)) {
             return new Response(undefined, { status: 401 });
           }
-          const sessionData = crypto.getRandomValues(new Uint8Array(128));
-          const sessionCookie = encodeBase64(sessionData);
-          for (const session in kv.list({ prefix: ["session"] })) {
-            if (session === sessionCookie) {
-              throw new Error("Wow");
-            }
-          }
-          const atomic = kv.atomic();
-          const user = (await kv.get(["user", json.name])).value ?? {
-            created: Date.now(),
-            sessions: [],
-          };
-          if (isUserObject(user)) {
-            user.sessions.push(sessionCookie);
-            kv.set(["user", json.name], user);
-          }
-
-          atomic.set(["session", sessionCookie], json.name);
-          if (!(await atomic.commit()).ok) {
-            throw new Error("Failed to commit");
-          }
-          const headers = new Headers();
-          setCookie(headers, {
-            httpOnly: true,
-            maxAge: 60 * 60 * 24 * 365,
-            path: "/api", // ?
-            sameSite: "Strict",
-            secure: true,
-            name: "__Host-session",
-            value: sessionCookie,
-          });
-          return new Response(undefined, { status: 200, headers });
+          return userManager.newUser(json.name);
         }
       }
 
@@ -101,6 +65,12 @@ if (import.meta.main) {
         return new Response(undefined, { status: 404 });
       }
       console.log(path, file.name, file.type);
+
+      info.completed.then(() => {
+        try {
+          file.file.close();
+        } catch { /** Do nothing */ }
+      });
 
       return new Response(file.file.readable, {
         headers: {
@@ -118,36 +88,15 @@ if (import.meta.main) {
   await serving.finished;
 }
 
-async function getUser(request: Request, kv: Deno.Kv) {
-  const cookies = getCookies(request.headers);
-  const sessionCookie = cookies["__Host-session"];
-  if (sessionCookie === undefined) {
-    return undefined; // No user
-  }
-  // Find the user
-  const name = await kv.get(["session", sessionCookie]);
-  if (typeof name.value !== "string") {
-    throw new Error("Unexpected session user name");
-  }
-  const user = await kv.get(["user", name.value]);
-  if (!isUserObject(user.value)) {
-    throw new Error("Unexpected user object");
-  }
-  if (user.value.sessions.includes(sessionCookie)) {
-    return name.value;
-  }
-  return undefined;
-}
-
 async function retrieveFile(path: string, contentType: string | null) {
-  let ret = await loadFile("src/" + path);
+  let ret = await loadFile(path);
   if (contentType !== null) {
     for (const extension of allExtensions(contentType) ?? []) {
       ret ??= await loadFile(`${path}.${extension}`);
     }
   }
-  ret ??= await loadFile(`src/${path}.html`);
-  ret ??= await loadFile(`src/${path}/index.html`);
+  ret ??= await loadFile(`${path}.html`);
+  ret ??= await loadFile(`${path}/index.html`);
   ret ??= await loadFile(path);
   if (contentType !== null) {
     for (const extension of allExtensions(contentType) ?? []) {
@@ -160,7 +109,7 @@ async function retrieveFile(path: string, contentType: string | null) {
 }
 
 async function loadFile(path: string) {
-  const name = "./web/dist/" + path;
+  const name = "public/" + path;
   try {
     const file = await Deno.open(name);
     const stat = await file.stat();

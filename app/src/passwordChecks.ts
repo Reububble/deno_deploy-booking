@@ -25,7 +25,5 @@ export async function checkPassword(attempt: string) {
     performCheck();
   }
   await check.promise;
-  if (attempt !== password) {
-    return false;
-  }
+  return attempt === password;
 }

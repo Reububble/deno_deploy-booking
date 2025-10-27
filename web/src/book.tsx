@@ -1,4 +1,6 @@
 import { mondayStart } from "shared/times.ts";
+import "booking/book.css";
+import { conformsBoth, isConformingArray, isConformingObject, isInstanceOf, isType } from "shared/typeNarrow.ts";
 
 async function getBookings() {
   try {
@@ -20,11 +22,25 @@ async function getBookings() {
   }
 }
 
-const bookings = await (await getBookings()).json() as {
-  name: string;
-  start: number;
-  end: number;
-}[];
+const bookings = await (await getBookings()).json() as unknown;
+if (
+  !conformsBoth(
+    isInstanceOf(Array),
+    isConformingArray(isConformingObject({
+      name: isType("string"),
+      start: isType("number"),
+      end: isType("number"),
+    })),
+  )(bookings)
+) throw new Error("Bookings invalid");
+
+const mon = <div></div>;
+const tue = <div></div>;
+const wed = <div></div>;
+const thu = <div></div>;
+const fri = <div></div>;
+const sat = <div></div>;
+const sun = <div></div>;
 
 document.body.replaceChildren(
   <div id="menu">
@@ -58,14 +74,20 @@ document.body.replaceChildren(
       </div>
     </div>
     <div id="display">
-      <div id="display_left">{...new Array(24).fill(undefined).map((_, i) => <div>{i === 0 ? `${i + 12} AM` : i < 13 ? `${i} AM` : `${i - 12} PM`}</div>)}</div>
-      <div id="display_mon"></div>
-      <div id="display_tue"></div>
-      <div id="display_wed"></div>
-      <div id="display_thu"></div>
-      <div id="display_fri"></div>
-      <div id="display_sat"></div>
-      <div id="display_sun"></div>
+      <div id="display_left">
+        {...new Array(24).fill(undefined).map((_, i) => (
+          <div>
+            {i === 0 ? `12 AM` : i < 13 ? `${i} AM` : `${i - 12} PM`}
+          </div>
+        ))}
+      </div>
+      {mon}
+      {tue}
+      {wed}
+      {thu}
+      {fri}
+      {sat}
+      {sun}
     </div>
   </div>,
   <div id="sidebar">
@@ -91,6 +113,7 @@ document.body.replaceChildren(
 const now = new Date();
 const monStart = mondayStart(now).getTime();
 
+// Display Bookings
 for (const booking of bookings) {
   // I have to display this booking
   for (let day = 0; day < 7; ++day) {
@@ -113,9 +136,15 @@ for (const booking of bookings) {
     booked.style.height = `${(bottom - top) * 100}%`;
     booked.textContent = `${booking.name}\n${new Date(booking.start).toLocaleTimeString()} - ${new Date(booking.end).toLocaleTimeString()}`;
 
-    const column = document.body.querySelector(
-      ["#display_mon", "#display_tue", "#display_wed", "#display_thu", "#display_fri", "#display_sat", "#display_sun"][day],
-    )!;
+    const column = [
+      mon,
+      tue,
+      wed,
+      thu,
+      fri,
+      sat,
+      sun,
+    ][day];
     column.appendChild(booked);
   }
 }

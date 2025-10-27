@@ -29,7 +29,7 @@ export function isValue<const V>(value: V) {
 }
 
 export function isInstanceOf<C extends new (...args: any[]) => any>(constructible: C) {
-  return <U>(u: U): u is U & InstanceType<C> => u instanceof constructible;
+  return (u: unknown): u is InstanceType<C> => u instanceof constructible;
 }
 
 export function isType<T extends keyof TypeMap>(typeString: T): Predicate<unknown, TypeMap[T]> {
